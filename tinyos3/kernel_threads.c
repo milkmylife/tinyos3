@@ -17,7 +17,7 @@ Tid_t sys_CreateThread(Task task, int argl, void* args)
 
   PCB* curproc = CURPROC;
   
-  PTCB* ptcb = (PTCB*) make_ptcb(curproc);
+  PTCB* ptcb = make_ptcb(curproc);
 
   curproc -> thread_count += 1;
 
@@ -101,7 +101,7 @@ int sys_ThreadDetach(Tid_t tid)
 {
   PTCB* ptcb = (PTCB*)tid;
 
-  if(rlist_find(&CURPROC->ptcb_list, ptcb, NULL) == NULL) {
+  if(rlist_find(&CURPROC->ptcb_list,ptcb, NULL) == NULL) {
     return -1;
   }
 
