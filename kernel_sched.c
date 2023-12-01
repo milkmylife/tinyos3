@@ -225,7 +225,7 @@ void release_TCB(TCB* tcb)
   Both of these structures are protected by @c sched_spinlock.
 */
 
-rlnode SCHED; /* The scheduler queue */
+rlnode SCHED[10]; /* The scheduler queue */
 rlnode TIMEOUT_LIST; /* The list of threads with a timeout */
 Mutex sched_spinlock = MUTEX_INIT; /* spinlock for scheduler queue */
 
