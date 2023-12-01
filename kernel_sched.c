@@ -36,6 +36,11 @@ CCB cctx[MAX_CORES];
 */
 #define CURTHREAD (CURCORE.current_thread)
 
+#define PRIORITY_QUEUES 10	//number of queues
+
+int calls = 0;	// calls to yield
+int limit = 1000;	// if it exceeds that limit then BOOST
+
 
 /*
 	This can be used in the preemptive context to
@@ -225,7 +230,7 @@ void release_TCB(TCB* tcb)
   Both of these structures are protected by @c sched_spinlock.
 */
 
-rlnode SCHED; /* The scheduler queue */
+rlnode SCHED[PRIORITY_QUEUES]; /* The scheduler queue */
 rlnode TIMEOUT_LIST; /* The list of threads with a timeout */
 Mutex sched_spinlock = MUTEX_INIT; /* spinlock for scheduler queue */
 
@@ -407,6 +412,37 @@ void yield(enum SCHED_CAUSE cause)
 {
 	/* Reset the timer, so that we are not interrupted by ALARM */
 	TimerDuration remaining = bios_cancel_timer();
+
+
+
+	switch(cause)
+	{
+	
+	case SCHED_QUANTUM:
+		{
+			CURTHREAD -> priority--;
+		}
+		break;
+
+	case SCHED_IO:
+		{
+			CURTHREAD -> priority++;
+		}
+		break;
+
+	case SCHED_MUTEX:
+		{
+			CURTHREAD -> priority++;
+		}
+		break;
+
+
+	default:
+
+		break;
+
+
+	}
 
 	/* We must stop preemption but save it! */
 	int preempt = preempt_off;
