@@ -273,7 +273,7 @@ static void sched_register_timeout(TCB* tcb, TimerDuration timeout)
 static void sched_queue_add(TCB* tcb)
 {
 	/* Insert at the end of the scheduling list */
-	rlist_push_back(&SCHED, &tcb->sched_node);
+	rlist_push_back(&SCHED[tcb -> priority], &tcb->sched_node);
 
 	/* Restart possibly halted cores */
 	cpu_core_restart_one();
@@ -331,8 +331,20 @@ static void sched_wakeup_expired_timeouts()
 */
 static TCB* sched_queue_select(TCB* current)
 {
+	int index = 0;
+
 	/* Get the head of the SCHED list */
-	rlnode* sel = rlist_pop_front(&SCHED);
+	for(int i =0; i < PRIORITY_QUEUES -1; i++)
+	{
+		if(is_rlist_empty(&SCHED[i]) == 0)
+		{
+			 index = i;
+			break;
+		}
+
+	}
+
+	rlnode* sel = rlist_pop_front(&SCHED[index]);
 
 	TCB* next_thread = sel->tcb; /* When the list is empty, this is NULL */
 
@@ -413,6 +425,7 @@ void yield(enum SCHED_CAUSE cause)
 	/* Reset the timer, so that we are not interrupted by ALARM */
 	TimerDuration remaining = bios_cancel_timer();
 
+	calls++;	// yield was called
 
 
 	switch(cause)
@@ -441,7 +454,11 @@ void yield(enum SCHED_CAUSE cause)
 
 		break;
 
+	}
 
+	if(calls == limit)
+	{
+		boost();
 	}
 
 	/* We must stop preemption but save it! */
@@ -495,6 +512,32 @@ void yield(enum SCHED_CAUSE cause)
   domain (e.g., waiting at some driver), we need to not turn preemption
   on!
 */
+
+void boost()
+{
+
+	for(int i = 0; i < PRIORITY_QUEUES -1; i++)
+	{
+
+		if(!is_rlist_empty(&SCHED[i]))
+		{
+			while(!is_rlist_empty(&SCHED[i])  && i != PRIORITY_QUEUES)
+			{
+				rlnode *thing = rlist_pop_front(&SCHED[i]);
+				thing -> tcb -> priority++;
+				rlist_append(&SCHED[i+1],thing); // move the node hihger
+
+			}
+
+				
+		}
+
+
+	}
+
+	calls = 0;
+
+}
 
 void gain(int preempt)
 {
@@ -557,7 +600,11 @@ static void idle_thread()
  */
 void initialize_scheduler()
 {
-	rlnode_init(&SCHED, NULL);
+	for(int i = 0; i < PRIORITY_QUEUES; i++)
+	{
+			rlnode_init(&SCHED[i], NULL);
+
+	}
 	rlnode_init(&TIMEOUT_LIST, NULL);
 }
 
