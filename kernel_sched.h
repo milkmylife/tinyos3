@@ -301,6 +301,16 @@ void run_scheduler(void);
 void initialize_scheduler(void);
 
 /**
+  @brief boost thread priority.
+
+   This function is called when the function yield has been called too many times and starvation ensues for the poor low priority threads. 
+   Essentialy,it just increases the priority of lower priority threads so that they may get a chance to feed on those juicy resources.
+ */
+
+void boost();
+
+
+/**
   @brief Quantum (in microseconds) 
 
   This is the default quantum for each thread, in microseconds.
