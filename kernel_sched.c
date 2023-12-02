@@ -39,7 +39,7 @@ CCB cctx[MAX_CORES];
 #define PRIORITY_QUEUES 20	//number of queues
 
 int calls = 0;	// calls to yield
-int limit = 1000;	// if it exceeds that limit then BOOST
+int limit = 3000;	// if it exceeds that limit then BOOST
 
 
 /*
@@ -176,7 +176,7 @@ TCB* spawn_thread(PCB* pcb, void (*func)())
 	tcb->last_cause = SCHED_IDLE;
 	tcb->curr_cause = SCHED_IDLE;
 
-	tcb -> priority = 5;	// intialise priority to 5 so it has some room for ups and downs
+	tcb -> priority = 10;	// intialise priority to 10 so it has some room for ups and downs
 
 	/* Compute the stack segment address and size */
 	void* sp = ((void*)tcb) + THREAD_TCB_SIZE;
@@ -275,7 +275,7 @@ static void sched_register_timeout(TCB* tcb, TimerDuration timeout)
 static void sched_queue_add(TCB* tcb)
 {
 	/* Insert at the end of the scheduling list */
-	rlist_push_back(&SCHED[tcb -> priority], &tcb->sched_node);
+	rlist_push_back(&SCHED[tcb -> priority], &tcb->sched_node);	// arranges the threads based on their priority
 
 	/* Restart possibly halted cores */
 	cpu_core_restart_one();
@@ -522,12 +522,13 @@ void yield(enum SCHED_CAUSE cause)
 void boost()
 {
 
-	for(int i = 0; i < PRIORITY_QUEUES - 1; i++)	// -1 so it wont get the highest priority thread
+	for(int i = 0; i < PRIORITY_QUEUES - 1; i++)	// -1 so it wont get the highest priority thread 
 	{
 
 		
-			while(!is_rlist_empty(&SCHED[i])  )	// while the list is not empty and the index is not showing the highest priority thread, 
-			{																														// then increase every threads priority by 1 :)
+			if(!is_rlist_empty(&SCHED[i])  )	// while the list is not empty  
+			{				
+																													//  increase every threads priority by 1 :)
 				rlnode *thing = rlist_pop_front(&SCHED[i]);								// get the first thread in the list
 				thing -> tcb -> priority++;																// increase the priority
 				rlist_append(&SCHED[i+1],thing);													 // move it higher in the list 
@@ -602,8 +603,9 @@ static void idle_thread()
  */
 void initialize_scheduler()
 {
-	for(int i = 0; i < PRIORITY_QUEUES -1; i++)
+	for(int i = 0; i < PRIORITY_QUEUES ; i++)
 	{
+			if(!is_rlist_empty(&SCHED[i]))
 			rlnode_init(&SCHED[i], NULL);
 
 	}
