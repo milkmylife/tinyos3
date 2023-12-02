@@ -36,10 +36,10 @@ CCB cctx[MAX_CORES];
 */
 #define CURTHREAD (CURCORE.current_thread)
 
-#define PRIORITY_QUEUES 20	//number of queues
+#define PRIORITY_QUEUES 30	//number of queues
 
 int calls = 0;	// calls to yield
-int limit = 3000;	// if it exceeds that limit then BOOST
+int limit = 7000;	// if it exceeds that limit then BOOST
 
 
 /*
@@ -176,7 +176,7 @@ TCB* spawn_thread(PCB* pcb, void (*func)())
 	tcb->last_cause = SCHED_IDLE;
 	tcb->curr_cause = SCHED_IDLE;
 
-	tcb -> priority = 10;	// intialise priority to 10 so it has some room for ups and downs
+	tcb -> priority = PRIORITY_QUEUES/2;	// intialise priority to 10 so it has some room for ups and downs
 
 	/* Compute the stack segment address and size */
 	void* sp = ((void*)tcb) + THREAD_TCB_SIZE;
