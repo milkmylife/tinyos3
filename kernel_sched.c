@@ -36,7 +36,7 @@ CCB cctx[MAX_CORES];
 */
 #define CURTHREAD (CURCORE.current_thread)
 
-#define PRIORITY_QUEUES 10	//number of queues
+#define PRIORITY_QUEUES 20	//number of queues
 
 int calls = 0;	// calls to yield
 int limit = 1000;	// if it exceeds that limit then BOOST
@@ -176,6 +176,8 @@ TCB* spawn_thread(PCB* pcb, void (*func)())
 	tcb->last_cause = SCHED_IDLE;
 	tcb->curr_cause = SCHED_IDLE;
 
+	tcb -> priority = 5;	// intialise priority to 5 so it has some room for ups and downs
+
 	/* Compute the stack segment address and size */
 	void* sp = ((void*)tcb) + THREAD_TCB_SIZE;
 
@@ -273,7 +275,7 @@ static void sched_register_timeout(TCB* tcb, TimerDuration timeout)
 static void sched_queue_add(TCB* tcb)
 {
 	/* Insert at the end of the scheduling list */
-	rlist_push_back(&SCHED, &tcb->sched_node);
+	rlist_push_back(&SCHED[tcb -> priority], &tcb->sched_node);
 
 	/* Restart possibly halted cores */
 	cpu_core_restart_one();
@@ -331,8 +333,20 @@ static void sched_wakeup_expired_timeouts()
 */
 static TCB* sched_queue_select(TCB* current)
 {
+	int index = 0;
+
 	/* Get the head of the SCHED list */
-	rlnode* sel = rlist_pop_front(&SCHED);
+	for(int i =0; i < PRIORITY_QUEUES -1; i++)
+	{
+		if(!is_rlist_empty(&SCHED[i]))
+		{
+			 index = i;
+			break;
+		}
+
+	}
+
+	rlnode* sel = rlist_pop_front(&SCHED[index]);
 
 	TCB* next_thread = sel->tcb; /* When the list is empty, this is NULL */
 
@@ -410,9 +424,12 @@ void sleep_releasing(Thread_state state, Mutex* mx, enum SCHED_CAUSE cause,
 
 void yield(enum SCHED_CAUSE cause)
 {
+
+		calls++;	// yield was called
+
+
 	/* Reset the timer, so that we are not interrupted by ALARM */
 	TimerDuration remaining = bios_cancel_timer();
-
 
 
 	switch(cause)
@@ -420,6 +437,7 @@ void yield(enum SCHED_CAUSE cause)
 	
 	case SCHED_QUANTUM:
 		{
+			if(CURTHREAD -> priority > 0)
 			CURTHREAD -> priority--;
 		}
 		break;
@@ -432,7 +450,8 @@ void yield(enum SCHED_CAUSE cause)
 
 	case SCHED_MUTEX:
 		{
-			CURTHREAD -> priority++;
+			if(CURTHREAD -> priority > 0)
+			CURTHREAD -> priority--;
 		}
 		break;
 
@@ -441,7 +460,11 @@ void yield(enum SCHED_CAUSE cause)
 
 		break;
 
+	}
 
+	if(calls == limit)
+	{
+		boost();
 	}
 
 	/* We must stop preemption but save it! */
@@ -495,6 +518,28 @@ void yield(enum SCHED_CAUSE cause)
   domain (e.g., waiting at some driver), we need to not turn preemption
   on!
 */
+
+void boost()
+{
+
+	for(int i = 0; i < PRIORITY_QUEUES - 1; i++)	// -1 so it wont get the highest priority thread
+	{
+
+		
+			while(!is_rlist_empty(&SCHED[i])  )	// while the list is not empty and the index is not showing the highest priority thread, 
+			{																														// then increase every threads priority by 1 :)
+				rlnode *thing = rlist_pop_front(&SCHED[i]);								// get the first thread in the list
+				thing -> tcb -> priority++;																// increase the priority
+				rlist_append(&SCHED[i+1],thing);													 // move it higher in the list 
+
+			}
+
+				
+	}
+
+	calls = 0;	// reset yield calls to 0 
+
+}
 
 void gain(int preempt)
 {
@@ -557,7 +602,11 @@ static void idle_thread()
  */
 void initialize_scheduler()
 {
-	rlnode_init(&SCHED, NULL);
+	for(int i = 0; i < PRIORITY_QUEUES -1; i++)
+	{
+			rlnode_init(&SCHED[i], NULL);
+
+	}
 	rlnode_init(&TIMEOUT_LIST, NULL);
 }
 
