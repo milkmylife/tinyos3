@@ -433,19 +433,22 @@ void yield(enum SCHED_CAUSE cause)
 	
 	case SCHED_QUANTUM:
 		{
+			if(CURTHREAD -> priority > 0)
 			CURTHREAD -> priority--;
 		}
 		break;
 
 	case SCHED_IO:
 		{
+			if(CURTHREAD -> priority < PRIORITY_QUEUES -1)
 			CURTHREAD -> priority++;
 		}
 		break;
 
 	case SCHED_MUTEX:
 		{
-			CURTHREAD -> priority++;
+			if(CURTHREAD -> priority > 0)
+			CURTHREAD -> priority--;
 		}
 		break;
 
