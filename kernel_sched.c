@@ -336,7 +336,7 @@ static TCB* sched_queue_select(TCB* current)
 	int index = 0;
 
 	/* Get the head of the SCHED list */
-	for(int i =0; i < PRIORITY_QUEUES -1; i++)
+	for(int i =PRIORITY_QUEUES -1; i >0 ; i--)
 	{
 		if(!is_rlist_empty(&SCHED[i]))
 		{
@@ -444,13 +444,14 @@ void yield(enum SCHED_CAUSE cause)
 
 	case SCHED_IO:
 		{
+			if(CURTHREAD -> priority < PRIORITY_QUEUES -1)
 			CURTHREAD -> priority++;
 		}
 		break;
 
 	case SCHED_MUTEX:
 		{
-			if(CURTHREAD -> priority > 0)
+			if(CURTHREAD -> priority > 0 && CURTHREAD -> last_cause == SCHED_MUTEX)
 			CURTHREAD -> priority--;
 		}
 		break;
