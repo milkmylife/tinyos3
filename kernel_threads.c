@@ -78,12 +78,25 @@ int sys_ThreadJoin(Tid_t tid, int* exitval)
   if(exitval != NULL){
     *exitval = ptcb->exitval;  
   }
-
+  /*
   if (ptcb->refcount == 0) {
     rlist_remove(&ptcb->ptcb_list_node);
     free(ptcb);
   }
-  
+  */
+  if (ptcb->refcount == 0) {
+    while(!is_rlist_empty(&curproc->ptcb_list)) {
+      rlnode *thing = rlist_pop_front(&curproc->ptcb_list);	
+      if(thing == &ptcb->ptcb_list_node) {
+        rlist_remove(&ptcb->ptcb_list_node);
+        free(ptcb);
+        break;
+      }
+      rlist_push_back(&curproc->ptcb_list, thing);
+    }
+    
+  }
+
   return 0;
 }
 
@@ -182,8 +195,16 @@ if(curproc -> thread_count == 0)  // the process terminates when all threads hav
   curproc->pstate = ZOMBIE;
 
   if (ptcb->refcount == 0) {
-    rlist_remove(&ptcb->ptcb_list_node);
-    free(ptcb);
+    while(!is_rlist_empty(&curproc->ptcb_list)) {
+      rlnode *thing = rlist_pop_front(&curproc->ptcb_list);	
+      if(thing == &ptcb->ptcb_list_node) {
+        rlist_remove(&ptcb->ptcb_list_node);
+        free(ptcb);
+        break;
+      }
+      rlist_push_back(&curproc->ptcb_list, thing);
+    }
+    
   }
 }
 

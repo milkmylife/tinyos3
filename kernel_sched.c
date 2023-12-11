@@ -36,11 +36,12 @@ CCB cctx[MAX_CORES];
 */
 #define CURTHREAD (CURCORE.current_thread)
 
-#define PRIORITY_QUEUES 30	//number of queues
+#define PRIORITY_QUEUES 50	//number of queues
 
 int calls = 0;	// calls to yield
-int limit = 7000;	// if it exceeds that limit then BOOST
-
+int limit = 10000;	// if it exceeds that limit then BOOST
+//2500 is mtask approved, 50000 is symposium approved, 100000
+//85000 and 90000 is whole program approved
 
 /*
 	This can be used in the preemptive context to
@@ -431,6 +432,12 @@ void yield(enum SCHED_CAUSE cause)
 	/* Reset the timer, so that we are not interrupted by ALARM */
 	TimerDuration remaining = bios_cancel_timer();
 
+	/* We must stop preemption but save it! */
+	int preempt = preempt_off;
+
+	TCB* current = CURTHREAD; /* Make a local copy of current process, for speed */
+
+	Mutex_Lock(&sched_spinlock);
 
 	switch(cause)
 	{
@@ -467,13 +474,6 @@ void yield(enum SCHED_CAUSE cause)
 	{
 		boost();
 	}
-
-	/* We must stop preemption but save it! */
-	int preempt = preempt_off;
-
-	TCB* current = CURTHREAD; /* Make a local copy of current process, for speed */
-
-	Mutex_Lock(&sched_spinlock);
 
 	/* Update CURTHREAD state */
 	if (current->state == RUNNING)
